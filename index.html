@@ -1,13 +1,47 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <title>Dynamic Map Demo</title>
-        <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-        <script type="text/javascript" src="//unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-        <link href="//unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
-    </head>
-    <body>
-        <div id="map"></div>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dynamic Map Demo</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    
+    <script type="text/javascript" src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        // 1. Set up the map control.
+        var map = new maplibregl.Map({
+            container: 'map',
+            // 2. Style URL for Stamen Toner via Stadia Maps
+            style: 'https://tiles.stadiamaps.com/styles/stamen_toner.json',  
+            // 3. Initial focus coordinate
+            center: { lat: 40.76609907907027, lng: -112.30385106813344 },  
+            // 4. Initial zoom
+            zoom: 8,  
+        });
+
+        // 5. MapLibre GL JS RTL text dependency for full rendering support
+        maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.4.0/dist/mapbox-gl-rtl-text.js').catch(function() {});
+
+        // 6. Add zoom and rotation controls.
+        map.addControl(new maplibregl.NavigationControl());
+    </script>
+</body>
 </html>
