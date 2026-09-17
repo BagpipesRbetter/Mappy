@@ -44,16 +44,31 @@
             display: block;
         }
 
-        path.sphere {
+        path.ocean {
             fill: #0b223a;
             stroke: #9bbad6;
             stroke-width: 0.8;
         }
 
-        path.country {
-            fill: #a7c5eb;
-            stroke: #1f3550;
+        path.graticule {
+            fill: none;
+            stroke: #56789a;
             stroke-width: 0.4;
+            stroke-opacity: 0.55;
+            vector-effect: non-scaling-stroke;
+        }
+
+        path.country-fill {
+            fill: #a7c5eb;
+            stroke: none;
+        }
+
+        path.country-border {
+            fill: none;
+            stroke: #1f3550;
+            stroke-width: 0.8;
+            stroke-linejoin: round;
+            vector-effect: non-scaling-stroke;
         }
 
         .tooltip {
@@ -91,9 +106,22 @@
         const projectionSelect = document.getElementById('projection-select');
 
         const sphereFeature = { type: 'Sphere' };
+        const graticule = d3.geoGraticule();
+        const mapLayer = svg.append('g').attr('class', 'map-layer');
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([1, 8])
+            .on('zoom', (event) => {
+                mapLayer.attr('transform', event.transform);
+            });
+
+        svg.call(zoomBehavior);
+
         let currentProjection;
         let pathGenerator;
+        let oceanSelection;
+        let graticuleSelection;
         let countrySelection;
+        let borderSelection;
 
         function getSize() {
             const node = svg.node();
@@ -125,26 +153,36 @@
                 pathGenerator.projection(currentProjection);
             }
 
-            svg.selectAll('path.sphere').attr('d', pathGenerator);
-            if (countrySelection) {
-                const transition = rerenderOnly ? countrySelection : countrySelection.transition().duration(500);
+            const mapSelections = [oceanSelection, graticuleSelection, countrySelection, borderSelection].filter(Boolean);
+            for (const selection of mapSelections) {
+                const transition = rerenderOnly ? selection : selection.transition().duration(500);
                 transition.attr('d', pathGenerator);
+            }
+
+            if (!rerenderOnly) {
+                svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
             }
         }
 
-        d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then((world) => {
+        d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json').then((world) => {
             const countries = topojson.feature(world, world.objects.countries).features;
+            const countryBorders = topojson.mesh(world, world.objects.countries, (a, b) => a !== b);
 
-            svg.append('path')
+            oceanSelection = mapLayer.append('path')
                 .datum(sphereFeature)
-                .attr('class', 'sphere');
+                .attr('class', 'ocean');
 
-            countrySelection = svg.append('g')
-                .selectAll('path.country')
+            graticuleSelection = mapLayer.append('path')
+                .datum(graticule())
+                .attr('class', 'graticule');
+
+            countrySelection = mapLayer.append('g')
+                .attr('class', 'countries')
+                .selectAll('path.country-fill')
                 .data(countries)
                 .enter()
                 .append('path')
-                .attr('class', 'country')
+                .attr('class', 'country-fill')
                 .on('mousemove', (event, feature) => {
                     tooltip
                         .style('display', 'block')
@@ -153,6 +191,10 @@
                         .text(feature.properties?.name || 'Country');
                 })
                 .on('mouseleave', () => tooltip.style('display', 'none'));
+
+            borderSelection = mapLayer.append('path')
+                .datum(countryBorders)
+                .attr('class', 'country-border');
 
             setProjection(projectionSelect.value);
         });
