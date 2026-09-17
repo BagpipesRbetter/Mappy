@@ -3,169 +3,45 @@
 <head>
     <meta charset="utf-8">
     <title>Dynamic Map Demo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    
+    <script type="text/javascript" src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+    
     <style>
-        :root {
-            color-scheme: light dark;
-        }
-
         body {
             margin: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #111;
-            color: #f5f5f5;
-        }
-
-        .controls {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-        }
-
-        #projection-select {
-            font: inherit;
-            padding: 0.2rem 0.4rem;
+            padding: 0;
         }
 
         #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
             width: 100%;
-            height: 100vh;
-            display: block;
-        }
-
-        path.sphere {
-            fill: #0b223a;
-            stroke: #9bbad6;
-            stroke-width: 0.8;
-        }
-
-        path.country {
-            fill: #a7c5eb;
-            stroke: #1f3550;
-            stroke-width: 0.4;
-        }
-
-        .tooltip {
-            position: fixed;
-            pointer-events: none;
-            background: rgba(0, 0, 0, 0.85);
-            color: #fff;
-            border-radius: 0.25rem;
-            padding: 0.2rem 0.4rem;
-            font-size: 0.8rem;
-            transform: translate(10px, 10px);
-            display: none;
-            z-index: 3;
         }
     </style>
 </head>
 <body>
-    <header class="controls">
-        <label for="projection-select">Projection</label>
-        <select id="projection-select">
-            <option value="mercator">Mercator</option>
-            <option value="equalEarth" selected>Equal Earth</option>
-            <option value="orthographic">Orthographic</option>
-            <option value="naturalEarth1">Natural Earth</option>
-            <option value="spilhaus">Spilhaus Ocean</option>
-        </select>
-    </header>
-
-    <svg id="map" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet"></svg>
-    <div id="tooltip" class="tooltip"></div>
+    <div id="map"></div>
 
     <script>
-        const svg = d3.select('#map');
-        const tooltip = d3.select('#tooltip');
-        const projectionSelect = document.getElementById('projection-select');
-
-        const sphereFeature = { type: 'Sphere' };
-        let currentProjection;
-        let pathGenerator;
-        let countrySelection;
-
-        function getSize() {
-            const node = svg.node();
-            const bounds = node.getBoundingClientRect();
-            const width = bounds.width || 1000;
-            const height = bounds.height || 600;
-            return { width, height };
-        }
-
-        function projectionFactory(width, height) {
-            return {
-                mercator: () => d3.geoMercator().scale(width / (2 * Math.PI)).translate([width / 2, height / 2]),
-                equalEarth: () => d3.geoEqualEarth().scale(width * 0.17).translate([width / 2, height / 2]),
-                orthographic: () => d3.geoOrthographic().scale(Math.min(width, height) * 0.45).translate([width / 2, height / 2]).clipAngle(90),
-                naturalEarth1: () => d3.geoNaturalEarth1().scale(width * 0.19).translate([width / 2, height / 2]),
-                spilhaus: () => d3.geoStereographic().rotate([-66.95, 49.56, 45]).clipAngle(140).scale(Math.min(width, height) * 0.95).translate([width / 2, height / 2])
-            };
-        }
-
-        function setProjection(key, rerenderOnly = false) {
-            const { width, height } = getSize();
-            const factories = projectionFactory(width, height);
-            const newProjection = (factories[key] || factories.equalEarth)();
-
-            currentProjection = newProjection;
-            if (!pathGenerator) {
-                pathGenerator = d3.geoPath().projection(currentProjection);
-            } else {
-                pathGenerator.projection(currentProjection);
-            }
-
-            svg.selectAll('path.sphere').attr('d', pathGenerator);
-            if (countrySelection) {
-                const transition = rerenderOnly ? countrySelection : countrySelection.transition().duration(500);
-                transition.attr('d', pathGenerator);
-            }
-        }
-
-        d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then((world) => {
-            const countries = topojson.feature(world, world.objects.countries).features;
-
-            svg.append('path')
-                .datum(sphereFeature)
-                .attr('class', 'sphere');
-
-            countrySelection = svg.append('g')
-                .selectAll('path.country')
-                .data(countries)
-                .enter()
-                .append('path')
-                .attr('class', 'country')
-                .on('mousemove', (event, feature) => {
-                    tooltip
-                        .style('display', 'block')
-                        .style('left', `${event.clientX}px`)
-                        .style('top', `${event.clientY}px`)
-                        .text(feature.properties?.name || 'Country');
-                })
-                .on('mouseleave', () => tooltip.style('display', 'none'));
-
-            setProjection(projectionSelect.value);
+        // 1. Set up the map control.
+        var map = new maplibregl.Map({
+            container: 'map',
+            // 2. Style URL for Stamen Toner via Stadia Maps
+            style: 'https://tiles.stadiamaps.com/styles/stamen_toner.json',  
+            // 3. Initial focus coordinate
+            center: { lat: 40.76609907907027, lng: -112.30385106813344 },  
+            // 4. Initial zoom
+            zoom: 8,  
         });
 
-        projectionSelect.addEventListener('change', (event) => {
-            setProjection(event.target.value);
-        });
+        // 5. MapLibre GL JS RTL text dependency for full rendering support
+        maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.4.0/dist/mapbox-gl-rtl-text.js').catch(function() {});
 
-        window.addEventListener('resize', () => {
-            if (countrySelection) {
-                setProjection(projectionSelect.value, true);
-            }
-        });
+        // 6. Add zoom and rotation controls.
+        map.addControl(new maplibregl.NavigationControl());
     </script>
 </body>
 </html>
